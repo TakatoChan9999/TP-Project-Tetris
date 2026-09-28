@@ -418,34 +418,37 @@ function dropTetro()
     //キーボードが押されたときの処理
 document.onkeydown = functon(e)
 {
-    if(over)return;
+    if(over){
 
-    switch( e.keyCode)
-    {
-        case 37 ://左
-            if( checkMove( -1, 0 ))tetro_x--;
-            break;
-        case 38 ://上
-            if( checkMove(  0,-1 ))tetro_y--;
-            break;
-        case 39 ://右
-            if( checkMove(  1, 0 ))tetro_x++; 
-            break;
-        case 40 ://下
-            if( checkMove(  0, 1 ))tetro_y++;
-            break;
-        case 32 ://スペース
-            let ntetro = rotate();
-            if( checkMove( 0, 0, ntetro)   ) tetro = ntetro;
-            {
-                se2.pause();
-                se2.play();
-                tetro = ntetro;
-            }
-            break;
+    } else {
+
+        switch( e.keyCode)
+        {
+            case 37 ://左
+                if( checkMove( -1, 0 ))tetro_x--;
+                break;
+            case 38 ://上
+                if( checkMove(  0,-1 ))tetro_y--;
+                break;
+            case 39 ://右
+                if( checkMove(  1, 0 ))tetro_x++; 
+                break;
+            case 40 ://下
+                if( checkMove(  0, 1 ))tetro_y++;
+                break;
+            case 32 ://スペース
+                let ntetro = rotate();
+                if( checkMove( 0, 0, ntetro)   ) tetro = ntetro;
+                {
+                    se2.pause();
+                    se2.play();
+                    tetro = ntetro;
+                }
+                break;
+        }
+
+    drawAll();
     }
-
-drawAll();
 }
 
 
