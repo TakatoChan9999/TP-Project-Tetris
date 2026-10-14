@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<!--  おそらくこのコードはAI製。でもどのAIかはわからない。 - TT  -->
+
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>シンプル テトリス</title>
+    <style>
+        /*
+            デザインをココで決定している。
+        */
+        /*
+        body {
+            background: #202028;
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 2em;
+            text-align: center;
+        }
+        */
+        
+        body {
+            background-image: url("images.jpeg");
+            background-size: cover;
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        canvas {
+            border: solid 2px #fff;
+            background-color: #000;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .info {
+            margin-left: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div>TETRIS</div>
+    <div class="container">
+        <canvas id="tetris" width="240" height="400"></canvas>
+        <div class="info">
+            <div id="score">SCORE: 0</div>
+        <div id="explain">
+            <br>~ HOW TO PLAY ~<br>
+            1.Arrow keys to move the Tetrimino.<br>
+            2.Q or W Keys to rotate the Tetrimino.<br>
+            <br>If block built up to ceil,<br>
+        </div>
+        </div>
+    </div>
+
+
+<script>
+const canvas = document.getElementById('tetris');
+const context = canvas.getContext('2d');
+
+//ゲーム画面全体を20倍で出力する。
+context.scale(20, 20);
+
+// ライン消去時のスコア加算
+function arenaSweep() {
+    
+    //行カウンタの初期化
+    let rowCount = 1;
+    outer: for (let y = arena.length - 1; y > 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+            if (arena[y][x] === 0) {
+                //空白で埋まっているならスキップ（outer:まで処理を飛ばす）
+                continue outer;
+            }
+        }
+
+        //ライン消しの処理
+        const row = arena.splice(y, 1)[0].fill(0);
+        arena.unshift(row);
+        //１列分見る場所がズレたので修正
+        ++y;
+
+        //おのずと二乗でスコアが増えてゆく
+        player.score += rowCount * 10;
+        rowCount *= 2;
+    }
+}
+
+// 衝突判定
+function collide(arena, player) {
+
+    //mにテトリミノの形状を書き込み、oに座標を書き込んでいる。
+    const [m, o] = [player.matrix, player.pos];
+    
+    for (let y = 0; y < m.length; ++y) {
+        
+        for (let x = 0; x < m[y].length; ++x) {
+
+            //テトリミノのブロックが盤面内でかつすでに置かれたブロックに衝突しているか
+            if (m[y][x] !== 0 &&
+               (arena[y + o.y] &&
+                arena[y + o.y][x + o.x]) !== 0) {
+                return true;
+            }
+
+        }
+
+    }
+    return false;
+}
+
+// マトリックス（盤面やブロック）の作成
+function createMatrix(w, h) {
+    const matrix = [];
+    //forループと同義
+    while (h--) {
+        //matrixに「横幅wの0で埋めた配列」を追加している。
+        matrix.push(new Array(w).fill(0));
+    }
+    return matrix;
+}
+
+// テトリミノ（ブロック）の形状定義
+function createPiece(type) {
+    if (type === 'I') {
+        return [
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+        ];
+    } else if (type === 'L') {
+        return [
+            [0, 2, 0],
+            [0, 2, 0],
+            [0, 2, 2],
+        ];
+    } else if (type === 'J') {
+        return [
+            [0, 3, 0],
+            [0, 3, 0],
+            [3, 3, 0],
+        ];
+    } else if (type === 'O') {
+        return [
+            [4, 4],
+            [4, 4],
+        ];
+    } else if (type === 'Z') {
+        return [
+            [5, 5, 0],
+            [0, 5, 5],
+            [0, 0, 0],
+        ];
+    } else if (type === 'S') {
+        return [
+            [0, 6, 6],
+            [6, 6, 0],
+            [0, 0, 0],
+        ];
+    } else if (type === 'T') {
+        return [
+            [0, 7, 0],
+            [7, 7, 7],
+            [0, 0, 0],
+        ];
+    }
+}
+
+// 描画処理
+function draw() {
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    drawMatrix(arena, {x: 0, y: 0});
+    drawMatrix(player.matrix, player.pos);
+}
+
+//テトリミノカラーの定義
+const colors = [
+    null,
+    '#FF0D72',
+    '#0DC2FF',
+    '#0DFF72',
+    '#F538FF',
+    '#FF8E0D',
+    '#FFE138',
+    '#3877FF',
+];
+
+function drawMatrix(matrix, offset) {
+    
+    //二次配列matrixの各行ごとに｛｝内の処理をする
+    matrix.forEach((row, y) => {
+        //一次配列rowの各要素ごとに｛｝内の処理をする。
+        row.forEach((value, x) => {
+            //0（空白）じゃないなら
+            if (value !== 0) {
+                context.fillStyle = colors[value];
+                context.fillRect(x + offset.x,
+                                 y + offset.y,
+                                 1, 1);
+            }
+        });
+    });
+}
+
+// 盤面とブロックの合体
+function merge(arena, player) {
+    //player構造体の二次配列matrixの各行ごとに｛｝内の処理をする。
+    player.matrix.forEach((row, y) => {
+        //一次配列rowの各要素ごとに｛｝内の処理をする。
+        row.forEach((value, x) => {
+            //0（空白）でないなら
+            if (value !== 0) {
+                //アリーナ（フィールド）へ書き込み
+                arena[y + player.pos.y][x + player.pos.x] = value;
+            }
+        });
+    });
+}
+
+// ブロックの自由落下処理
+function playerDrop() {
+    player.pos.y++;
+    //埋まってますかチェック
+    if (collide(arena, player)) {
+        //埋まってる時の処理
+        //埋まってない座標まで戻す
+        player.pos.y--;
+        //アリーナ（フィールド）へテトリミノを書き込み
+        merge(arena, player);
+        //player構造体の初期化
+        playerReset();
+        //ラインチェック＆スコア加算
+        arenaSweep();
+        //
+        updateScore();
+    }
+    dropCounter = 0;
+}
+
+// ブロックの左右移動
+function playerMove(offset) {
+    player.pos.x += offset;
+    //埋まりましたかチェック
+    if (collide(arena, player)) {
+        //埋まる前に戻す
+        player.pos.x -= offset;
+    }
+}
+
+// 次のブロックの生成とゲームオーバー判定
+function playerReset() {
+    
+    //「 | 0」はトリッキーな切り捨ての書き方である。一般的にはMath.floor()を使う。
+    
+    const pieces = 'TJLOSZI';
+    //0＜配列piecesの長さまでの乱数（ 0 <= 6.999....）を生成し、「 | 0」で切り捨てにしている
+    player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+    player.pos.y = 0;
+
+    //（アリーナの真ん中の座標）-（テトリミノの左半分の大きさ）
+    //(arena[0].length / 2 | 0)だけだと全体が右にずれるため(player.matrix[0].length / 2 | 0)で左にずらしている。
+    player.pos.x = (arena[0].length / 2 | 0) -
+                   (player.matrix[0].length / 2 | 0);
+    if (collide(arena, player)) {
+        //初期化してもすでに埋まっている（ゲームオーバーなら）
+        //アリーナ（フィールド）を0で埋める
+        arena.forEach(row => row.fill(0));
+        //スコアを0にする
+        player.score = 0;
+        //スコアを更新する
+        updateScore();
+    }
+}
+
+// ブロックの回転処理
+function playerRotate(dir) {
+    const pos = player.pos.x;
+    let offset = 1;
+    rotate(player.matrix, dir);
+    while (collide(arena, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+            rotate(player.matrix, -dir);
+            player.pos.x = pos;
+            return;
+        }
+    }
+}
+
+function rotate(matrix, dir) {
+    
+    //このforループは「右上のブロックと左下のブロックを入れ替える（左斜の斜線を中心とした反転）」をしている。
+    for (let y = 0; y < matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
+            [
+                matrix[x][y],
+                matrix[y][x],
+            ] = [
+                matrix[y][x],
+                matrix[x][y],
+            ];
+        }
+    }
+    
+    if (dir > 0) {
+        //右回転
+        //各行の配列の左右を反転（結果、右回転したときと同じになる）
+        matrix.forEach(row => row.reverse());
+    } else {
+        //左回転
+        //配列の上下を反転（結果、左回転したときと同じになる）
+        matrix.reverse();
+    }
+}
+
+let dropCounter = 0;
+let dropInterval = 1000; // 落下速度 (1000ms = 1秒)
+
+let lastTime = 0;
+
+//メイン関数
+function update(time = 0) {
+    const deltaTime = time - lastTime;
+    lastTime = time;
+
+    dropCounter += deltaTime;
+    if (dropCounter > dropInterval) {
+        playerDrop();
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+//スコア更新
+function updateScore() {
+    document.getElementById('score').innerText = 'SCORE: ' + player.score;
+}
+
+document.addEventListener('keydown', event => {
+    if (event.keyCode === 37) {
+        playerMove(-1); // 左矢印
+    } else if (event.keyCode === 39) {
+        playerMove(1);  // 右矢印
+    } else if (event.keyCode === 40) {
+        playerDrop();   // 下矢印
+    } else if (event.keyCode === 81) {
+        playerRotate(-1); // Qキーで左回転
+    } else if (event.keyCode === 87) {
+        playerRotate(1);  // Wキーで右回転
+    }
+});
+
+const arena = createMatrix(12, 20);
+
+const player = {
+    pos: {x: 0, y: 0},
+    matrix: null,
+    score: 0,
+};
+
+playerReset();
+updateScore();
+update();
+</script>
+</body>
+</html>
