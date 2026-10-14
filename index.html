@@ -1,458 +1,379 @@
 <!DOCTYPE html>
-<html>
-<boby>
-<canvas id="can"></canvas>
+
+<!--  おそらくこのコードはAI製。でもどのAIかはわからない。 - TT  -->
+
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>シンプル テトリス</title>
+    <style>
+        /*
+            デザインをココで決定している。
+        */
+        /*
+        body {
+            background: #202028;
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 2em;
+            text-align: center;
+        }
+        */
+        
+        body {
+            background-image: url("images.jpeg");
+            background-size: cover;
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        canvas {
+            border: solid 2px #fff;
+            background-color: #000;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .info {
+            margin-left: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div>TETRIS</div>
+    <div class="container">
+        <canvas id="tetris" width="240" height="400"></canvas>
+        <div class="info">
+            <div id="score">SCORE: 0</div>
+        <div id="explain">
+            <br>~ HOW TO PLAY ~<br>
+            1.Arrow keys to move the Tetrimino.<br>
+            2.Q or W Keys to rotate the Tetrimino.<br>
+            <br>If block built up to ceil,<br>
+        </div>
+        </div>
+    </div>
+
+
 <script>
+const canvas = document.getElementById('tetris');
+const context = canvas.getContext('2d');
 
-//落ちるスピード
-const GAME_SPEED = 300;
+//ゲーム画面全体を20倍で出力する。
+context.scale(20, 20);
 
-//フィールドサイズ
-const FIELD_COL = 10;
-const FIELD_ROW = 20;
+// ライン消去時のスコア加算
+function arenaSweep() {
+    
+    //行カウンタの初期化
+    let rowCount = 1;
+    outer: for (let y = arena.length - 1; y > 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+            if (arena[y][x] === 0) {
+                //空白で埋まっているならスキップ（outer:まで処理を飛ばす）
+                continue outer;
+            }
+        }
 
+        //ライン消しの処理
+        const row = arena.splice(y, 1)[0].fill(0);
+        arena.unshift(row);
+        //１列分見る場所がズレたので修正
+        ++y;
 
-//ブロック一つのサイズ(ピクセル)
-const BLOCK_SIZE = 30;
+        //おのずと二乗でスコアが増えてゆく
+        player.score += rowCount * 10;
+        rowCount *= 2;
+    }
+}
 
-//キャンバスサイズ
-const SCREEN_W =BLOCK_SIZE * FIELD_COL;
-const SCREEN_H =BLOCK_SIZE * FIELD_ROW;
+// 衝突判定
+function collide(arena, player) {
 
-//テトロミノのサイズ
-const TETRO_SIZE =4;
+    //mにテトリミノの形状を書き込み、oに座標を書き込んでいる。
+    const [m, o] = [player.matrix, player.pos];
+    
+    for (let y = 0; y < m.length; ++y) {
+        
+        for (let x = 0; x < m[y].length; ++x) {
 
-let can = document.getElementById("can");
-let con = can.getContext("2d");
+            //テトリミノのブロックが盤面内でかつすでに置かれたブロックに衝突しているか
+            if (m[y][x] !== 0 &&
+               (arena[y + o.y] &&
+                arena[y + o.y][x + o.x]) !== 0) {
+                return true;
+            }
 
-can.width  = SCREEN_W;
-can.height = SCREEN_H;
-can.style.border = "4px soild #555";
+        }
 
-const TETRO_COLORS = [ 
-    "#000",             // 0空
-    "#6CF",             // 1水色
-    "#F92",             // 2オレンジ
-    "#66F",             // 3青
-    "#C5C",             // 4紫
-    "#FD2",             // 5黄色
-    "#F44",             // 6赤
-    "#5B5",             // 7緑
-    "black"
+    }
+    return false;
+}
+
+// マトリックス（盤面やブロック）の作成
+function createMatrix(w, h) {
+    const matrix = [];
+    //forループと同義
+    while (h--) {
+        //matrixに「横幅wの0で埋めた配列」を追加している。
+        matrix.push(new Array(w).fill(0));
+    }
+    return matrix;
+}
+
+// テトリミノ（ブロック）の形状定義
+function createPiece(type) {
+    if (type === 'I') {
+        return [
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+        ];
+    } else if (type === 'L') {
+        return [
+            [0, 2, 0],
+            [0, 2, 0],
+            [0, 2, 2],
+        ];
+    } else if (type === 'J') {
+        return [
+            [0, 3, 0],
+            [0, 3, 0],
+            [3, 3, 0],
+        ];
+    } else if (type === 'O') {
+        return [
+            [4, 4],
+            [4, 4],
+        ];
+    } else if (type === 'Z') {
+        return [
+            [5, 5, 0],
+            [0, 5, 5],
+            [0, 0, 0],
+        ];
+    } else if (type === 'S') {
+        return [
+            [0, 6, 6],
+            [6, 6, 0],
+            [0, 0, 0],
+        ];
+    } else if (type === 'T') {
+        return [
+            [0, 7, 0],
+            [7, 7, 7],
+            [0, 0, 0],
+        ];
+    }
+}
+
+// 描画処理
+function draw() {
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    drawMatrix(arena, {x: 0, y: 0});
+    drawMatrix(player.matrix, player.pos);
+}
+
+//テトリミノカラーの定義
+const colors = [
+    null,
+    '#FF0D72',
+    '#0DC2FF',
+    '#0DFF72',
+    '#F538FF',
+    '#FF8E0D',
+    '#FFE138',
+    '#3877FF',
 ];
 
-const TETRO_TYPES = [
-    [], // 0. 空っぽ
-    [                     // 1.I
-        [ 0, 0, 0, 0 ], 
-        [ 1, 1, 1, 1 ], 
-        [ 0, 0, 0, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ], 
-    [                     // 2.L
-        [ 0, 1, 0, 0 ], 
-        [ 0, 1, 0, 0 ], 
-        [ 0, 1, 1, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ],
-    [                   // 3.J
-        [ 0, 0, 1, 0 ], 
-        [ 0, 0, 1, 0 ], 
-        [ 0, 1, 1, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ],
-    [                   // 4.T
-        [ 0, 1, 0, 0 ], 
-        [ 0, 1, 1, 0 ], 
-        [ 0, 1, 0, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ],
-    [                   // 5.0
-        [ 0, 0, 0, 0 ], 
-        [ 0, 1, 1, 0 ], 
-        [ 0, 1, 1, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ],
-    [                   // 6.Z
-        [ 0, 0, 0, 0 ], 
-        [ 1, 1, 0, 0 ], 
-        [ 0, 1, 1, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ],
-    [                   // 7.S
-        [ 0, 0, 0, 0 ], 
-        [ 0, 1, 1, 0 ], 
-        [ 1, 1, 0, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ],
-    [                   // 8.
-        [ 0, 0, 0, 0 ], 
-        [ 0, 0, 1, 0 ], 
-        [ 0, 1, 0, 0 ], 
-        [ 0, 0, 0, 0 ], 
-    ]
-]
- 
-
-/*
-    img1.png, block.pngが同フォルダ内にないためそこでエラー。
-    se1.mp3, se2.mp3, se3.mp3が同フォルダ内にないためまたエラー。
-
-
-*/
-
-
-//画像と効果音(おまけ)
-let bgimage;
-bgimage= new Image ();
-//bgimage. src="back.png";
-bgimage. src="./images.jpeg";
-blimage=  new Image ();
-blimage. src="block.png";
-let se1,se2,se3;
-se1 = new Audio("se1.mp3");
-se2 = new Audio("se2.mp3");
-se3 = new Audio("se3.mp3");
-
-//初期位置
-const START_X = FIELD_COL/2 - TETRO_SIZE/2;
-const START_Y = 0;
-
-//テトロミノ本体
-let tetro;
-
-// tetro変数の中身がないので注意
-
-//テトロミノの座標
-let tetoro_x = START_X;
-let tetoro_y = START_Y;
-//テトロミノの形
-let tetro_t;
-//フィールドの中身
-let field = [] ; 
- 
-//ゲームオーバーフラグ
-let over = false;
-
-//消したライン数
-let lines = 0;
-//スコア
-let score = 0;
-
-//ゲームフィールドの位置
-const OFFSET_X = 40;//(640-300)/2;
-const OFFSET_Y = 20;
-
-
-//イニシャライズでスタート
-init();
-
-
-//初期化
-function init()
-    {
-            //フィールドのクリア
-        for(let y=0; y<FIELD_ROW ; y++ )
-            {
-                field[y] = [];
-                for(let x=0; x<FIELD_COL; x++ )
-                    {
-                        field[y][x] =0;
-                    }
-            }  
-
-        //最初のテトロのためネクスト入れる
-        tetro_n = Math.floor (Math.random()*(TETRO_TYPES. length-1 ) )+1;
-
-        //テトロをセットして描画開始！
-        setTetro();
-        drawAll();
-        setInterval ( dropTetro, GAME_SPEED-speed  );
-    }
-
-//テトロをネクストで初期化
-function setTetro()
-    {
-        //ネクストを現在のテトロにする
-        tetro_t = tetro_n;
-        tetro = TETRO_TYPES[ tetro_t ];
-        tetro_n = Math.floor (Math.random()*(TETRO_TYPES. length-1 ) )+1;
-
-        //位置を初期値にする
-        tetro_x = START_X;
-        tetro_y = START_Y;
-    }
-
-//ブロック一つを描画する
-function drawBlock(x,y,c)
-    {
-        let px = OFFSET_X + x * BLOCK_SIZE;
-        let py = OFFSET_Y + y * BLOCK_SIZE;
-
-        con.drawImage(blimage,
-            c*BLOCK_SIZE,0,   BLOCK_SIZE,BLOCK_SIZE,
-            px,py,            BLOCK_SIZE,BLOCK_SIZE );
-    }
-
-//全部描画する
-function drawAll()
-    {
-        //背景を描画
-        con.drawImage(bgimage,-100,-100);
-        //フィールドの枠を描く
-        con.strokeStyle="rgba(80,160,255,0.1)";
-        con.strokeRect(OFFSET_X-6,OFFSET_Y-6,SCREEN_W+12,SCREEN_H+12);
-        con.strokeStyle="rgba(80,160,255,0.5)";
-        con.strokeRect(OFFSET_X-2,OFFSET_Y-2,SCREEN_W+4,SCREEN_H+4);
-        con.fillStyle="rgba(0,0,0,0,4)";
-        con.fillRect(OFFSET_X,OFFSET_Y,SCREEN_W,SCREEN_H);
-
-        //フィールド描画
-
-        for(let y=0; y<FIELD_ROW ; y++ )
-        {
-            for(let x=0; x<FIELD_COL ; x++ )
-            {
-                if(  field[x][y]   )
-                {
-                    drawBlock (x,y, field[y][x] );        
-                }
-                else
-                {
-                //多分なくてもいい
-                }
-            }
-        }
-
-        //着地点を計算
-        let plus=0;
-        while( checkMove(0,plus+1) )plus++;
-
-        //テトロミノを描画
-
-        for(let y=0; y<TETORO_SIZE ; y++ )
-            {  
-        
-                for(let x=0; x<TETORO_SIZE ; x++ )
-                    {
-                    //テトロ本体
-                    if(  tetro[y][x]   )
-                    　 {
-                            //着地点
-                            drawBlock(tetro_x+x, tetro_y+y+plus,  0)  ;     
-                            //本体
-                            drawBlock(tetro_x+x, tetro_y+y ,      tetro_t)  ; 
-                        }
-                    //ネクストテトロ  
-                    if(  TETRO_TYPES[tetro_n][y][x]  ) 
-                        {
-                        drawBlock(13+x, 4+y , tetro_n );
-                        }
-                    }
-            }
-
-        drawInfo ();
-    }
-
-
-//インフォメーション表示
-function drawInfo ()
-{
-    let w;
-    con.fillStyle="White";
-
-    let s="NEXT"
-    con.fillText(s,410,120);
-     
-    s="SCORE"
-    con.fillText(s,410,300);
-    s=""+score;
-    w= con.measureText(s).width;
-    con.fillText(s,560-w,340);
-
-    s="LINES" ;
-    w = con.measureText(s).width;
-    con.fillText(s,410,400);
-    s=""+lines;
-    w = con.measureText(s).width;
-    con.fillText(s,560-w,440);
+function drawMatrix(matrix, offset) {
     
-    if(over)
-    {
-        s="GAME OVER";
-        w = con.measureText(s). width;
-        let x = SCREEN_W/2 - w/2;
-        let y = SCREEN_H/2 - 20;
-        con.lineWidth = 4;
-        con.strokeText(s,OFFSET_X+x,y);
-        con.fillStyle="White";
-        con.fillText(s,OFFSET_X+x,y);
+    //二次配列matrixの各行ごとに｛｝内の処理をする
+    matrix.forEach((row, y) => {
+        //一次配列rowの各要素ごとに｛｝内の処理をする。
+        row.forEach((value, x) => {
+            //0（空白）じゃないなら
+            if (value !== 0) {
+                context.fillStyle = colors[value];
+                context.fillRect(x + offset.x,
+                                 y + offset.y,
+                                 1, 1);
+            }
+        });
+    });
+}
+
+// 盤面とブロックの合体
+function merge(arena, player) {
+    //player構造体の二次配列matrixの各行ごとに｛｝内の処理をする。
+    player.matrix.forEach((row, y) => {
+        //一次配列rowの各要素ごとに｛｝内の処理をする。
+        row.forEach((value, x) => {
+            //0（空白）でないなら
+            if (value !== 0) {
+                //アリーナ（フィールド）へ書き込み
+                arena[y + player.pos.y][x + player.pos.x] = value;
+            }
+        });
+    });
+}
+
+// ブロックの自由落下処理
+function playerDrop() {
+    player.pos.y++;
+    //埋まってますかチェック
+    if (collide(arena, player)) {
+        //埋まってる時の処理
+        //埋まってない座標まで戻す
+        player.pos.y--;
+        //アリーナ（フィールド）へテトリミノを書き込み
+        merge(arena, player);
+        //player構造体の初期化
+        playerReset();
+        //ラインチェック＆スコア加算
+        arenaSweep();
+        //
+        updateScore();
+    }
+    dropCounter = 0;
+}
+
+// ブロックの左右移動
+function playerMove(offset) {
+    player.pos.x += offset;
+    //埋まりましたかチェック
+    if (collide(arena, player)) {
+        //埋まる前に戻す
+        player.pos.x -= offset;
     }
 }
 
-// ブロックの衝突判定
-function checkMove( mx,my ,ntetro )
-{
-    if( ntetro == undefined ) ntetro = tetro;
+// 次のブロックの生成とゲームオーバー判定
+function playerReset() {
+    
+    //「 | 0」はトリッキーな切り捨ての書き方である。一般的にはMath.floor()を使う。
+    
+    const pieces = 'TJLOSZI';
+    //0＜配列piecesの長さまでの乱数（ 0 <= 6.999....）を生成し、「 | 0」で切り捨てにしている
+    player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+    player.pos.y = 0;
 
-   for(let y=0; y<TETORO_SIZE ; y++ )
-    {
-     for(let x=0; x<TETORO_SIZE ; x++ )
-     { 
-        let nx = tetro_x + mx + x;
-        let ny = tetro_y + my + y;
-        
-        if(  ntetro[y][x]   )
-    { 
-            if( ny < 0 ||
-                nx < 0 ||
-                ny >= FIELD_ROW ||
-                nx >= FIELD_COL ||
-                field[ny][nx] ) 
-            {   
-                return false;
-            }
+    //（アリーナの真ん中の座標）-（テトリミノの左半分の大きさ）
+    //(arena[0].length / 2 | 0)だけだと全体が右にずれるため(player.matrix[0].length / 2 | 0)で左にずらしている。
+    player.pos.x = (arena[0].length / 2 | 0) -
+                   (player.matrix[0].length / 2 | 0);
+    if (collide(arena, player)) {
+        //初期化してもすでに埋まっている（ゲームオーバーなら）
+        //アリーナ（フィールド）を0で埋める
+        arena.forEach(row => row.fill(0));
+        //スコアを0にする
+        player.score = 0;
+        //スコアを更新する
+        updateScore();
+    }
+}
+
+// ブロックの回転処理
+function playerRotate(dir) {
+    const pos = player.pos.x;
+    let offset = 1;
+    rotate(player.matrix, dir);
+    while (collide(arena, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+            rotate(player.matrix, -dir);
+            player.pos.x = pos;
+            return;
+        }
+    }
+}
+
+function rotate(matrix, dir) {
+    
+    //このforループは「右上のブロックと左下のブロックを入れ替える（左斜の斜線を中心とした反転）」をしている。
+    for (let y = 0; y < matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
+            [
+                matrix[x][y],
+                matrix[y][x],
+            ] = [
+                matrix[y][x],
+                matrix[x][y],
+            ];
+        }
     }
     
-       }
- }
- 
-    return true;
-}
-
-// テトロの回転
-function rotate()
-{
-  let ntetro = [];
-
- for(let y=0; y<TETORO_SIZE ; y++ )
-    {
-        ntetro[y]=[];
-     for(let x=0; x<TETORO_SIZE ; x++ )
-     { 
-        ntetro[y][x]=tetro[TETORO_SIZE-x-1][y];
-    }
-}
-
-return ntetro;
-}
-
-//テトロを固定する
-function fixTetro()
-{
-  for(let y=0; y<TETORO_SIZE ; y++ )
-    {
-     for(let x=0; x<TETORO_SIZE ; x++ )
-      { 
-        if( tetro[y][x] )
-        {
-          field[tetro_y + y][tetro_x + x] = tetro_t;
-        }
-      }
-    }
-}
-
-//ラインが揃ったかチェックして消す
-function checkLine()
-{
-    let line=c
-    for(let y=0; y<FIELD_ROW ; y++ )
-    {
-        let flag=true;
-
-        for(let x=0; x<TETORO_SIZE ; x++ )
-        {  
-            if( !field[y][x] )  
-            { 
-                flag=false 
-                break;
-            }
-        }
-        
-        if(flag)
-        {
-            linec++;
-
-            for(let ny = y; ny>0 ;ny-- )
-            {
-                for(let nx=0;nx<FIELD_COL ; nx++)
-                {
-                    field[ny][nx] = field[ny-1][nx];
-              }  
-            }
-        }
-    }
-  
-    if(linec)
-    {
-         se3.pause();
-         se3.play();
-         lines += linec;
-         score+100* (2**(linec-1));
-         if(speed<GAME_SPEED-10)speed+=10;
-    }
-}
-
-
-
-
-
-//ブロックの落ちる処理
-function dropTetro()
-{
-    if(over)return;
-  
-    if( checkMove(  0, 1 ))tetro_y++;
-    else
-    {
-        se1.play();
-        fixTetro();
-        checkLine();
-        setTetro();
-        if( !checkMove(0,0)  )over=true;
-    }
-
-    drawAll();
-}
-
-    //キーボードが押されたときの処理
-document.onkeydown = functon(e)
-{
-    if(over){
-
+    if (dir > 0) {
+        //右回転
+        //各行の配列の左右を反転（結果、右回転したときと同じになる）
+        matrix.forEach(row => row.reverse());
     } else {
-
-        switch( e.keyCode)
-        {
-            case 37 ://左
-                if( checkMove( -1, 0 ))tetro_x--;
-                break;
-            case 38 ://上
-                if( checkMove(  0,-1 ))tetro_y--;
-                break;
-            case 39 ://右
-                if( checkMove(  1, 0 ))tetro_x++; 
-                break;
-            case 40 ://下
-                if( checkMove(  0, 1 ))tetro_y++;
-                break;
-            case 32 ://スペース
-                let ntetro = rotate();
-                if( checkMove( 0, 0, ntetro)   ) tetro = ntetro;
-                {
-                    se2.pause();
-                    se2.play();
-                    tetro = ntetro;
-                }
-                break;
-        }
-
-    drawAll();
+        //左回転
+        //配列の上下を反転（結果、左回転したときと同じになる）
+        matrix.reverse();
     }
 }
 
+let dropCounter = 0;
+let dropInterval = 1000; // 落下速度 (1000ms = 1秒)
 
+let lastTime = 0;
 
+//メイン関数
+function update(time = 0) {
+    const deltaTime = time - lastTime;
+    lastTime = time;
+
+    dropCounter += deltaTime;
+    if (dropCounter > dropInterval) {
+        playerDrop();
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+//スコア更新
+function updateScore() {
+    document.getElementById('score').innerText = 'SCORE: ' + player.score;
+}
+
+document.addEventListener('keydown', event => {
+    if (event.keyCode === 37) {
+        playerMove(-1); // 左矢印
+    } else if (event.keyCode === 39) {
+        playerMove(1);  // 右矢印
+    } else if (event.keyCode === 40) {
+        playerDrop();   // 下矢印
+    } else if (event.keyCode === 81) {
+        playerRotate(-1); // Qキーで左回転
+    } else if (event.keyCode === 87) {
+        playerRotate(1);  // Wキーで右回転
+    }
+});
+
+const arena = createMatrix(12, 20);
+
+const player = {
+    pos: {x: 0, y: 0},
+    matrix: null,
+    score: 0,
+};
+
+playerReset();
+updateScore();
+update();
 </script>
-</boby>
+</body>
 </html>
